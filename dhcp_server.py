@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import socket
+from ipaddress import IPv4Interface
 from datetime import datetime, timedelta
 import random
 
@@ -7,7 +8,7 @@ import random
 client_records = {}  # Using a dictionary to store records
 
 # List containing all available IP addresses as strings
-ip_addresses = [f"192.168.45.{i}" for i in range(1, 15)]
+ip_addresses = [ip.exploded for ip in IPv4Interface("192.168.45.0/28").network.hosts()]
 
 # Function to generate a random MAC address
 def generate_random_mac():
@@ -33,13 +34,13 @@ def dhcp_operation(parsed_message, client_address):
                 # Client's lease has expired, renew using the same IP
                 client_records[client_mac]['timestamp'] = datetime.now() + timedelta(seconds=60)
                 client_records[client_mac]['acked'] = False
-                return f"OFFER {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
+                return f"ACKNOWLEDGE {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
         else:
             # Check for available IP addresses
             if ip_addresses:
                 ip_address = ip_addresses.pop(0)
                 client_records[client_mac] = {'ip': ip_address, 'timestamp': datetime.now() + timedelta(seconds=60), 'acked': False}
-                return f"OFFER {client_mac} {ip_address} {client_records[client_mac]['timestamp'].isoformat()}"
+                return f"ACKNOWLEDGE {client_mac} {ip_address} {client_records[client_mac]['timestamp'].isoformat()}"
             else:
                 # No available IP addresses, DECLINE
                 return "DECLINE"
@@ -59,10 +60,10 @@ def dhcp_operation(parsed_message, client_address):
         # Implement RELEASE logic
         if client_mac in client_records:
             ip_addresses.append(client_records[client_mac]['ip'])  # Add released IP back to available IPs
-            client_records[client_mac]['timestamp'] = datetime.now()  # Expire IP assignment
-            client_records[client_mac]['acked'] = False  # Set acked to False
-            return "RELEASED"  # Indicate to client that RELEASE is processed
-        return ""  # Do nothing if client MAC address not found
+            del client_records[client_mac]  # Remove client record
+            return "RELEASED"
+        else:
+            return "DECLINE"
     elif request == "RENEW":
         # Implement RENEW logic
         if client_mac in client_records and datetime.now() < client_records[client_mac]['timestamp']:
@@ -88,8 +89,7 @@ try:
 
         response = dhcp_operation(parsed_message, client_address)
 
-        if response:
-            server.sendto(response.encode(), client_address)
+        server.sendto(response.encode(), client_address)
 except OSError:
     pass
 except KeyboardInterrupt:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import uuid
 import socket
 from datetime import datetime, timedelta
@@ -22,30 +21,32 @@ def send_receive(message):
 
     response, _ = client_socket.recvfrom(4096)
     if response:
-        print("client: Received message:", response.decode())
         parsed_response = response.decode().split()
         
-        if parsed_response[0] == "ACKNOWLEDGE":
+        if parsed_response[0] == "ACKNOWLEDGE" or parsed_response[0] == "OFFER":
             client_mac = parsed_response[1]
             assigned_ip = parsed_response[2]
             expiration_time = parsed_response[3]
             
-            print(f"client: IP address {assigned_ip} assigned to client with MAC address {client_mac}.")
-            print(f"client: Lease will expire at {expiration_time}.")
+            if parsed_response[0] == "ACKNOWLEDGE":
+                print(f"client: Received message: ACKNOWLEDGE {client_mac} {assigned_ip} {expiration_time}")
+            elif parsed_response[0] == "OFFER":
+                print(f"client: Received message: OFFER {client_mac} {assigned_ip} {expiration_time}")
+            
+            print(f"client: MAC address: {client_mac}")
+            print(f"client: IP address: {assigned_ip}")
+            print(f"client: Lease expiration time: {expiration_time}")
 
-            # Display the menu after receiving ACKNOWLEDGE
-            display_menu()
+            display_menu()  # Display the menu after receiving ACKNOWLEDGE or OFFER
             
             while True:
                 choice = input("client: Enter your choice (1-3): ")
                 if choice == "1":
-                    # Implement RELEASE logic
                     release_message = f"RELEASE {MAC}"
                     send_receive(release_message)
                     print("client: Release option chosen.")
                     display_menu()  # Display the menu again
                 elif choice == "2":
-                    # Implement RENEW logic
                     renew_message = f"RENEW {MAC}"
                     send_receive(renew_message)
                     display_menu()  # Display the menu again
@@ -54,11 +55,16 @@ def send_receive(message):
                     break
                 else:
                     print("client: Invalid choice. Please enter 1, 2, or 3.")
+
+        else:
+            print(f"client: Received message: {response.decode()}")  # Print received message
     else:
-        print("not workin fam")   
-    print("bruh")           
+        print("not workin fam")              
     client_socket.close()
 
-# Sending DISCOVER message
-discover_message = f"DISCOVER {MAC}"
-send_receive(discover_message)
+def main():
+    discover_message = f"DISCOVER {MAC}"
+    send_receive(discover_message)  # Send DISCOVER message
+
+if __name__ == "__main__":
+    main()
