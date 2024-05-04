@@ -33,40 +33,41 @@ def dhcp_operation(parsed_message, clientAddress):
                 print(f"server: I assigned IP address {client_records[client_mac]['ip']} to client with MAC address {client_mac}.")
                 return f"ACKNOWLEDGE {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
             else:
-                # Client's lease has expired, renew using the same IP
+                # Client's time has expired, give client same IP
                 client_records[client_mac]['timestamp'] = datetime.now() + timedelta(seconds=60)
                 client_records[client_mac]['acked'] = False
                 print(f"server: Client with MAC address {client_mac} renewed IP address {client_records[client_mac]['ip']}.")
                 return f"OFFER {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
         else:
-            # Check for available IP addresses
+            # checking for available IP addresses
             if ip_addresses:
                 ip_address = ip_addresses.pop(0)
                 client_records[client_mac] = {'ip': ip_address, 'timestamp': datetime.now() + timedelta(seconds=60), 'acked': False}
                 print(f"server: I assigned IP address {ip_address} to client with MAC address {client_mac}.")
                 return f"OFFER {client_mac} {ip_address} {client_records[client_mac]['timestamp'].isoformat()}"
             else:
-                # No available IP addresses, DECLINE
-                print("server: No available IP addresses.")
+                # send DECLINE message 
+                print("server: No IP addresses available.")
                 return "DECLINE"
     elif request == "REQUEST":
         print(f"server: REQUEST received")
         if client_mac in client_records and client_records[client_mac]['ip'] == parsed_message[2]:
             if datetime.now() < client_records[client_mac]['timestamp']:
-                # Client's lease has not expired, send ACKNOWLEDGE
+                # timestamp hasn't expired, send ACKNOWLEDGE
                 client_records[client_mac]['acked'] = True
                 print(f"server: Client with MAC address {client_mac} requested IP address {client_records[client_mac]['ip']} which is already assigned.")
                 return f"ACKNOWLEDGE {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
             else:
-                # Client's lease has expired, send DECLINE
+                # timestamp hasn't expired, send DECLINE
                 print(f"server: Client with MAC address {client_mac} requested IP address {client_records[client_mac]['ip']} which has expired.")
                 return "DECLINE"
         else:
-            # Client's IP address doesn't match or not in records, send DECLINE
+            # send DECLINE since client doesn't have matching addresses
             print(f"server: Client with MAC address {client_mac} requested invalid or unassigned IP address.")
             return "DECLINE"
     elif request == "RELEASE":
         print("server: RELEASE received")
+        # check if clients MAC is in records and release
         if client_mac in client_records:
             print(client_mac)
             client_records[client_mac]['timestamp'] = datetime.now()
@@ -75,12 +76,12 @@ def dhcp_operation(parsed_message, clientAddress):
             print(f"server: Released IP address {client_records[client_mac]['ip']} assigned to client {client_mac} with port number {clientAddress[1]}.")
             return ""
         else:
-            # If the client's MAC address is not found in the records, do nothing
             print("server: Client's MAC address not found in records.")
             return "DECLINE"
     elif request == "RENEW":
         print("server: RENEW received")
-        if client_mac in client_records: #and datetime.now() < client_records[client_mac]['timestamp']
+        # check if clients MAC is in records and renew
+        if client_mac in client_records: 
             client_records[client_mac]['timestamp'] = datetime.now() + timedelta(seconds=60)
             print(f"server: Client with MAC address {client_mac} renewed IP address {client_records[client_mac]['ip']}.")
             return f"RENEWED {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
