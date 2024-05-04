@@ -69,14 +69,16 @@ def dhcp_operation(parsed_message, clientAddress):
         print("server: RELEASE received")
         # check if clients MAC is in records and release
         if client_mac in client_records:
-            print(client_mac)
+            ip_address = client_records[client_mac]['ip']
+            ip_addresses.append(ip_address)  # Add released IP back to available IPs
             client_records[client_mac]['timestamp'] = datetime.now()
             client_records[client_mac]['acked'] = False
+            del client_records[client_mac]  # Remove client record
             # Display the client's IP address and port number
-            print(f"server: Released IP address {client_records[client_mac]['ip']} assigned to client {client_mac} with port number {clientAddress[1]}.")
+            print(f"server: Released IP address.")
             return ""
         else:
-            print("server: Client's MAC address not found in records.")
+            print("server: Client's IP has already been released.")
             return "DECLINE"
     elif request == "RENEW":
         print("server: RENEW received")
@@ -84,7 +86,7 @@ def dhcp_operation(parsed_message, clientAddress):
         if client_mac in client_records: 
             client_records[client_mac]['timestamp'] = datetime.now() + timedelta(seconds=60)
             print(f"server: Client with MAC address {client_mac} renewed IP address {client_records[client_mac]['ip']}.")
-            return f"RENEWED {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
+            return f"ACKNOWLEDGE {client_mac} {client_records[client_mac]['ip']} {client_records[client_mac]['timestamp'].isoformat()}"
         else:
             return "DECLINE"
 
